@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH -J kamrul_eval
+#SBATCH -o /scratch/mhasan8/experiment/fusion/data_loader/out/my_output_%j
+#SBATCH --mem=32GB
+#SBATCH -t 5-00:00:00
+#SBATCH -n 1
+#SBATCH -c 12
+#SBATCH -p gpu
+#SBATCH --gres=gpu:1
+
+
+module load anaconda
+module load cuda
+
+python ~/ets/deep_learning/fusion/train_mosi_fusion_network.py 0 12
