@@ -54,23 +54,23 @@ def print_loss(e_tr_losses,e_val_losses,model_name):
 	plt.savefig(fig_name)
 	plt.close()
 
-train_x,train_y=load_data('../mosi_data/scaled/COVAREP/train_matrix.pkl')
+train_x,train_y=load_data('../mosi_data/normalized/COVAREP/train_matrix.pkl')
 train_data_loader=get_data_loader(train_x,train_y)
 print("loaded train data loader")
-test_x,test_y=load_data('../mosi_data/scaled/COVAREP/test_matrix.pkl')
+test_x,test_y=load_data('../mosi_data/normalized/COVAREP/test_matrix.pkl')
 print("loaded test")
-valid_x,valid_y=load_data('../mosi_data/scaled/COVAREP/valid_matrix.pkl')
+valid_x,valid_y=load_data('../mosi_data/normalized/COVAREP/valid_matrix.pkl')
 print("loaded valid")
 
 # train_x,train_y=load_data('../mosi_data/COVAREP/valid_matrix.pkl')
 
 # print("loaded train data loader")
-# test_x,test_y=train_x[0:30],train_y[0:30]
+# test_x,test_y=train_x[0:5],train_y[0:5]
 
-# valid_x,valid_y=train_x[30:50],train_y[30:50]
+# valid_x,valid_y=train_x[0:5],train_y[0:5]
 # print("loaded valid")
 
-# train_x,train_y=train_x[50:],train_y[50:]
+# train_x,train_y=train_x[0:5],train_y[0:5]
 # train_data_loader=get_data_loader(train_x,train_y)
 
 
@@ -83,14 +83,21 @@ def train_epoch(mosi_model,opt,criterion):
 		mini_batch_losses=[]
 		for j,x in enumerate(seq):
 			x=get_unpad_data(x)
+			# print "x",x
 			y=variablize(torch.FloatTensor([[label[j]]]))
+			# print "y",y
 			y_hat=mosi_model.forward(x)
+			#print "y_hat",y_hat
 			loss = criterion(y_hat, y)
+			#print "loss",loss
 			mini_batch_losses.append(loss)
 
 		mini_batch_loss=reduce(torch.add,mini_batch_losses)/len(mini_batch_losses)
+		# print "mini batch loss:", mini_batch_loss
+		# a = list(mosi_model.parameters())[0].clone()
 		mini_batch_loss.backward()
 		opt.step()
+		# b = list(mosi_model.parameters())[0].clone()
 		losses.append(mini_batch_loss.cpu().data.numpy())
 
 	return np.nanmean(losses)
@@ -132,13 +139,24 @@ def evaluate_best_model(model_name,params):
 	eval_results=eval_val+eval_test
 	save_result(model_name,eval_results,params)
 
+def evaluate_new_valid_model(best_model,model_name,params):
+	evaluator=MosiEvaluator()
+	comment="validtion evaluation for best model: "+model_name
+	print(comment)
+	eval_val = evaluator.evaluate(best_model,valid_x,valid_y)
+	comment="test evaluation for best model: "+model_name
+	print(comment)
+	eval_test = evaluator.evaluate(best_model,test_x,test_y)
+
+	eval_results=eval_val+eval_test
+	save_result(model_name,eval_results,params)
 
 
 def train_mosi_sentiments(mosi_model,params):
 
 	evaluator=MosiEvaluator()
 
-	model_name="m_"+str(params)
+	model_name="m_lan_n_"+str(params)
 	model_file=model_version+"models/"+model_name
 
 	opt = optim.Adam(mosi_model.parameters(), lr=params['lr'])
@@ -161,6 +179,7 @@ def train_mosi_sentiments(mosi_model,params):
 			best_valid_loss=valid_loss
 			print "best valid loss",best_valid_loss	
 			#mosi_model.cpu().save(open(model_file,'wb'))
+			evaluate_new_valid_model(mosi_model,model_name,params)
 			try:		
 				mosi_model.save(open(model_file,'wb'))				
 			except:
@@ -169,7 +188,7 @@ def train_mosi_sentiments(mosi_model,params):
 
 		if (e%10==0):
 			print_loss(e_tr_losses,e_val_losses,model_name)
-			evaluate_best_model(model_name,params)
+			# evaluate_best_model(model_name,params)
 
 		print "epoch",e
 
@@ -188,7 +207,7 @@ if __name__=='__main__':
 
 	num_atten=3
 	out_dim=1
-	params_list=[(264,60,40,0.001)]
+	params_list=[(256,40,40,0.0001)]
 	for param in params_list:
 		print param 
 		(lan_hid_dim,audio_hid_dim,face_hid_dim,learning_rate)=param 

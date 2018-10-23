@@ -72,6 +72,25 @@ class LSTM_custom(nn.Module):
         self.W_hg = nn.Linear(hidden_dim,hidden_dim)
         self.W_xo = nn.Linear(input_dim,hidden_dim)
         self.W_ho = nn.Linear(hidden_dim,hidden_dim)
+        self.drop = nn.Dropout(0.2)
+
+
+    def dropout(self):
+        s_dict=self.W_hi.state_dict()
+        s_dict['weight']=self.drop(s_dict['weight'])
+        self.W_hi.load_state_dict(s_dict)
+
+        s_dict=self.W_hf.state_dict()
+        s_dict['weight']=self.drop(s_dict['weight'])
+        self.W_hf.load_state_dict(s_dict)
+
+        s_dict=self.W_hg.state_dict()
+        s_dict['weight']=self.drop(s_dict['weight'])
+        self.W_hg.load_state_dict(s_dict)
+
+        s_dict=self.W_ho.state_dict()
+        s_dict['weight']=self.drop(s_dict['weight'])
+        self.W_ho.load_state_dict(s_dict)
 
     def forward(self,x,hidden):
         h,c = hidden[0],hidden[1]
@@ -92,9 +111,16 @@ class MOSI_fusion_classifier(nn.Module,ModelIO):
     def __init__(self,lan_param,audio_param,face_param,out_dim):
         super(MOSI_fusion_classifier,self).__init__()
         self.lan_lstm=LSTM_custom(lan_param['input_dim'],lan_param['hidden_dim'])
+        #self.face_lstm=LSTM_custom(face_param['input_dim'],face_param['hidden_dim'])
+        #self.audio_lstm=LSTM_custom(audio_param['input_dim'],audio_param['hidden_dim'])
         self.z=lan_param['hidden_dim']
+        #self.z=face_param['hidden_dim']
+        #self.z=audio_param['hidden_dim']
         self.W_fhout = nn.Linear(self.z,out_dim)
         self.h = self.init_hidden(lan_param['hidden_dim'])
+        #self.h = self.init_hidden(face_param['hidden_dim'])
+        #self.h = self.init_hidden(audio_param['hidden_dim'])
+
 
     def forward(self,opinion):
         for i,x in enumerate(opinion):
@@ -104,9 +130,17 @@ class MOSI_fusion_classifier(nn.Module,ModelIO):
             x_face=variablize(torch.FloatTensor(x_face))
 
             if i==0:
+                if self.training:
+                    self.lan_lstm.dropout()
+                    #self.face_lstm.dropout()
+                    #self.audio_lstm.dropout()
                 h_x,c_x=self.lan_lstm.forward(x_lan,self.h)
+                #h_x,c_x=self.face_lstm.forward(x_face,self.h)
+                #h_x,c_x=self.audio_lstm.forward(x_audio,self.h)
             else:
                 h_x,c_x=self.lan_lstm.forward(x_lan,(h_x,c_x))
+                #h_x,c_x=self.face_lstm.forward(x_face,(h_x,c_x))
+                #h_x,c_x=self.audio_lstm.forward(x_audio,(h_x,c_x))
 
         out=self.W_fhout(h_x)
         # return torch.sigmoid(out)
